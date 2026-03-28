@@ -1,0 +1,90 @@
+{
+  "theme": "dark",
+  "archetype": "Archetype 5: Jewel & Luxury (Adapted for Medical AI)",
+  "core_principles": [
+    "Fusion over Imitation: Combine clinical precision with high-end tech aesthetic.",
+    "Emotion First: The UI should evoke trust, advanced capability, and calm.",
+    "Contrast & Hierarchy: Pure black/navy backgrounds with glowing electric cyan accents."
+  ],
+  "colors": {
+    "background_base": "#0A0A0A",
+    "background_surface": "#0F172A",
+    "glass_surface": "rgba(15, 23, 42, 0.6)",
+    "primary_accent": "#00E5FF",
+    "secondary_accent": "#10B981",
+    "danger_alert": "#EF4444",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#94A3B8",
+    "border_subtle": "rgba(255, 255, 255, 0.1)"
+  },
+  "typography": {
+    "headings": {
+      "family": "Outfit",
+      "style": "font-light tracking-tight",
+      "h1": "text-4xl sm:text-5xl lg:text-6xl",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl",
+      "h3": "text-xl sm:text-2xl"
+    },
+    "body": {
+      "family": "IBM Plex Sans",
+      "style": "leading-relaxed text-base"
+    },
+    "data_numbers": {
+      "family": "JetBrains Mono",
+      "style": "tracking-tight"
+    },
+    "labels": {
+      "style": "uppercase text-xs tracking-[0.2em] text-slate-400"
+    }
+  },
+  "surface_strategies": {
+    "headers_and_nav": "Crystal Glassmorphism: bg-black/60 with backdrop-blur-2xl and border-b border-white/10.",
+    "dashboard_cards": "Flat solid background (#0F172A) with 1px border-white/10, no shadow. On hover, slight lift (-translate-y-1) and shadow-lg.",
+    "active_upload_zone": "Tracing Beam style: dashed border that glows primary_accent when active or dragged over."
+  },
+  "layout_and_spacing": {
+    "general": "Generous Spacing Philosophy. Use p-6 or p-8 for card internals. Avoid cramped data views.",
+    "dashboard_grid": "Control Room Grid: grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with gap-6. Every pixel utilized intentionally.",
+    "landing_hero": "Asymmetrical split. Text max-w-2xl on left, abstract visual on right or as a rich background with bg-black/40 overlay. Max overlay opacity bg-black/50."
+  },
+  "components": {
+    "buttons": "Primary: bg-[#00E5FF] text-black font-medium. Secondary: bg-transparent border border-white/20 text-white hover:bg-white/5.",
+    "progress_bars": "Use Shadcn Progress, customize indicator to glowing primary_accent or danger_alert depending on TB probability.",
+    "modals_dialogs": "Shadcn Dialog with Glassmorphism overlay (backdrop-blur-md bg-black/80) and sleek dark surface.",
+    "icons": "Phosphor Icons (@phosphor-icons/react) with Duotone weight for a premium technical look.",
+    "charts": "Shadcn Charts / Recharts. Dark theme grids (stroke-white/5), data lines in primary_accent."
+  },
+  "pages_instructions": {
+    "landing": "Immersive hero section using 'hero_background'. Title text left-aligned, prominent CTA. Use Framer Motion for fade-up entrance.",
+    "dashboard": "Sidebar nav (glassmorphism). Top row: 3 stats cards (Total Scans, TB Detected, Normal). Middle: Recent scans list or chart.",
+    "analysis": "Main feature. Center stage drag-and-drop zone. Once uploaded, show side-by-side: Original X-Ray and Grad-CAM Heatmap. Below: Probability score with glowing progress bar and 'Generate PDF' button.",
+    "pdf_report": "CRITICAL: The generated PDF must use a light theme layout for printing clarity. White background, black text, clear X-ray images.",
+    "about": "Bento grid layout explaining CNN and Grad-CAM. Use 'analysis_background' for one of the bento cells."
+  },
+  "motion": {
+    "page_transitions": "Fade in with subtle 10px slide up (Framer Motion).",
+    "loading_states": "Cyan glowing pulse or abstract skeleton loader.",
+    "hover_effects": "Buttons scale up slightly (1.02), cards lift and border brightens."
+  },
+  "media": {
+    "hero_background": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/ee5438d8-37db-4f1a-8ea0-e85184d45be8/images/430eb1377d4f7d6b50336c743c95a652b359bc6a07921c5bf6ffd90e5d86e77f.png",
+      "description": "Abstract dark medical tech background for landing page hero."
+    },
+    "analysis_background": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/ee5438d8-37db-4f1a-8ea0-e85184d45be8/images/c7b0a87ff9ce6d4edd599851d61773ca957967dd194e4ff684fb72e298cf9563.png",
+      "description": "High-tech AI scanning concept background for the About page or Analysis empty state."
+    },
+    "chest_xray_placeholder_1": {
+      "url": "https://images.unsplash.com/photo-1631651363531-fd29aec4cb5c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHw0fHxjaGVzdCUyMHgtcmF5JTIwbHVuZyUyMHNjYW58ZW58MHx8fHwxNzc0NzE2Nzk5fDA&ixlib=rb-4.1.0&q=85",
+      "description": "Realistic chest X-ray image for testing the analysis upload UI."
+    },
+    "chest_xray_placeholder_2": {
+      "url": "https://images.pexels.com/photos/7579829/pexels-photo-7579829.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Doctor reviewing X-ray, good for About or Landing page features."
+    }
+  },
+  "testing": {
+    "attributes": "All interactive and key informational elements MUST include a data-testid attribute (e.g., data-testid='upload-zone')."
+  }
+}
