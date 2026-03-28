@@ -45,7 +45,10 @@ MODEL_PATH = ROOT_DIR / "model.keras"
 model = None
 try:
     model = tf.keras.models.load_model(str(MODEL_PATH))
-    logging.info("TensorFlow model loaded successfully")
+    # Build the model by calling it once (needed for Keras 3 Grad-CAM)
+    dummy_input = np.zeros((1, 224, 224, 3), dtype=np.float32)
+    _ = model(dummy_input)
+    logging.info("TensorFlow model loaded and built successfully")
 except Exception as e:
     logging.error(f"Failed to load model: {e}")
 
@@ -69,11 +72,10 @@ def create_refresh_token(user_id: str) -> str:
     return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
 
 async def get_current_user(request: Request) -> dict:
-    token = request.cookies.get("access_token")
-    if not token:
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            token = auth_header[7:]
+    auth_header = request.headers.get("Authorization", "")
+    token = None
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
@@ -121,14 +123,10 @@ async def register(input_data: RegisterInput, request: Request):
     user_id = str(result.inserted_id)
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
-    response = JSONResponse(content={"id": user_id, "name": input_data.name, "email": email, "role": "user"})
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=7200, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
-    return response
+    return {"id": user_id, "name": input_data.name, "email": email, "role": "user", "access_token": access_token, "refresh_token": refresh_token}
 
 @api_router.post("/auth/login")
 async def login(input_data: LoginInput, request: Request):
-    from fastapi.responses import JSONResponse
     email = input_data.email.strip().lower()
     ip = request.client.host if request.client else "unknown"
     identifier = f"{ip}:{email}"
@@ -152,18 +150,11 @@ async def login(input_data: LoginInput, request: Request):
     user_id = str(user["_id"])
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
-    response = JSONResponse(content={"id": user_id, "name": user.get("name", ""), "email": email, "role": user.get("role", "user")})
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=7200, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
-    return response
+    return {"id": user_id, "name": user.get("name", ""), "email": email, "role": user.get("role", "user"), "access_token": access_token, "refresh_token": refresh_token}
 
 @api_router.post("/auth/logout")
 async def logout():
-    from fastapi.responses import JSONResponse
-    response = JSONResponse(content={"message": "Logged out"})
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
-    return response
+    return {"message": "Logged out"}
 
 @api_router.get("/auth/me")
 async def get_me(user: dict = Depends(get_current_user)):
@@ -171,8 +162,7 @@ async def get_me(user: dict = Depends(get_current_user)):
 
 @api_router.post("/auth/refresh")
 async def refresh_token(request: Request):
-    from fastapi.responses import JSONResponse
-    token = request.cookies.get("refresh_token")
+    token = request.headers.get("X-Refresh-Token", "")
     if not token:
         raise HTTPException(status_code=401, detail="No refresh token")
     try:
@@ -184,9 +174,7 @@ async def refresh_token(request: Request):
             raise HTTPException(status_code=401, detail="User not found")
         user_id = str(user["_id"])
         access_token = create_access_token(user_id, user["email"])
-        response = JSONResponse(content={"message": "Token refreshed"})
-        response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=7200, path="/")
-        return response
+        return {"access_token": access_token}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expired")
     except jwt.InvalidTokenError:
@@ -194,23 +182,40 @@ async def refresh_token(request: Request):
 
 # ─── Grad-CAM ───
 def generate_gradcam(img_array, model_ref):
-    last_conv_layer = model_ref.get_layer("conv2d_2")
-    grad_model = tf.keras.Model(
-        inputs=model_ref.input,
-        outputs=[last_conv_layer.output, model_ref.output]
-    )
-    with tf.GradientTape() as tape:
-        conv_outputs, predictions = grad_model(img_array)
-        loss = predictions[:, 0]
-    grads = tape.gradient(loss, conv_outputs)
-    if grads is None:
+    try:
+        last_conv_layer_name = "conv2d_2"
+        last_conv_layer = model_ref.get_layer(last_conv_layer_name)
+        
+        # For Keras 3 Sequential models, we need to use a different approach
+        # Build a sub-model using the layer call chain
+        img_tensor = tf.constant(img_array, dtype=tf.float32)
+        
+        with tf.GradientTape() as tape:
+            # Forward pass through each layer manually to get conv output
+            x = img_tensor
+            conv_output = None
+            for layer in model_ref.layers:
+                x = layer(x)
+                if layer.name == last_conv_layer_name:
+                    conv_output = x
+            predictions = x
+            loss = predictions[:, 0]
+        
+        if conv_output is None:
+            return None
+            
+        grads = tape.gradient(loss, conv_output)
+        if grads is None:
+            return None
+        pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+        conv_out = conv_output[0]
+        heatmap = conv_out @ pooled_grads[..., tf.newaxis]
+        heatmap = tf.squeeze(heatmap)
+        heatmap = tf.maximum(heatmap, 0) / (tf.math.reduce_max(heatmap) + 1e-8)
+        return heatmap.numpy()
+    except Exception as e:
+        logging.error(f"Grad-CAM generation error: {e}")
         return None
-    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
-    conv_outputs = conv_outputs[0]
-    heatmap = conv_outputs @ pooled_grads[..., tf.newaxis]
-    heatmap = tf.squeeze(heatmap)
-    heatmap = tf.maximum(heatmap, 0) / (tf.math.reduce_max(heatmap) + 1e-8)
-    return heatmap.numpy()
 
 def overlay_heatmap(original_img, heatmap, alpha=0.4):
     heatmap_resized = cv2.resize(heatmap, (original_img.shape[1], original_img.shape[0]))

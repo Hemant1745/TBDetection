@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import { api } from '@/contexts/AuthContext';
 import Sidebar from '@/components/Sidebar';
 import { FileDown, Search, ChevronDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function ReportsPage() {
   const [scans, setScans] = useState([]);
@@ -17,7 +15,7 @@ export default function ReportsPage() {
   useEffect(() => {
     const fetchScans = async () => {
       try {
-        const { data } = await axios.get(`${API}/scans`, { withCredentials: true });
+        const { data } = await api.get('/scans');
         setScans(data);
       } catch (e) {
         console.error('Failed to fetch scans', e);
@@ -36,7 +34,7 @@ export default function ReportsPage() {
     setExpandedId(scanId);
     if (!expandedData[scanId]) {
       try {
-        const { data } = await axios.get(`${API}/scans/${scanId}`, { withCredentials: true });
+        const { data } = await api.get(`/scans/${scanId}`);
         setExpandedData((prev) => ({ ...prev, [scanId]: data }));
       } catch (e) {
         console.error('Failed to fetch scan details', e);
@@ -46,8 +44,7 @@ export default function ReportsPage() {
 
   const handleDownload = async (scanId) => {
     try {
-      const res = await axios.get(`${API}/report/${scanId}?patient_name=Patient&patient_age=N/A&patient_gender=N/A`, {
-        withCredentials: true,
+      const res = await api.get(`/report/${scanId}?patient_name=Patient&patient_age=N/A&patient_gender=N/A`, {
         responseType: 'blob',
       });
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));

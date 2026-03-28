@@ -1,10 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
+import { api } from '@/contexts/AuthContext';
 import Sidebar from '@/components/Sidebar';
 import { Upload, X, Scan, FileDown, Eye, EyeOff } from 'lucide-react';
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function AnalysisPage() {
   const [file, setFile] = useState(null);
@@ -44,8 +42,7 @@ export default function AnalysisPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const { data } = await axios.post(`${API}/predict`, formData, {
-        withCredentials: true,
+      const { data } = await api.post('/predict', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setResult(data);
@@ -59,8 +56,7 @@ export default function AnalysisPage() {
   const handleDownloadPdf = async () => {
     if (!result) return;
     try {
-      const res = await axios.get(`${API}/report/${result.id}?patient_name=Patient&patient_age=N/A&patient_gender=N/A`, {
-        withCredentials: true,
+      const res = await api.get(`/report/${result.id}?patient_name=Patient&patient_age=N/A&patient_gender=N/A`, {
         responseType: 'blob',
       });
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));

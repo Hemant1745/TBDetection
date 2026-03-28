@@ -17,6 +17,8 @@ class TBDetectionAPITester:
     def __init__(self, base_url="https://xray-diagnosis-ai.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.session = requests.Session()
+        self.access_token = None
+        self.refresh_token = None
         self.tests_run = 0
         self.tests_passed = 0
         self.test_results = []
@@ -40,16 +42,21 @@ class TBDetectionAPITester:
         """Run a single API test"""
         url = f"{self.base_url}/{endpoint}"
         
+        # Add Authorization header if we have a token
+        headers = {}
+        if self.access_token:
+            headers['Authorization'] = f'Bearer {self.access_token}'
+        
         try:
             if method == 'GET':
-                response = self.session.get(url)
+                response = self.session.get(url, headers=headers)
             elif method == 'POST':
                 if files:
-                    response = self.session.post(url, data=data, files=files)
+                    response = self.session.post(url, data=data, files=files, headers=headers)
                 else:
-                    response = self.session.post(url, json=data)
+                    response = self.session.post(url, json=data, headers=headers)
             elif method == 'DELETE':
-                response = self.session.delete(url)
+                response = self.session.delete(url, headers=headers)
 
             success = response.status_code == expected_status
             details = f"Status: {response.status_code}"
@@ -105,6 +112,23 @@ class TBDetectionAPITester:
                 data=register_data
             )
             
+            if success and response:
+                try:
+                    result = response.json()
+                    # Store tokens for subsequent requests
+                    self.access_token = result.get('access_token')
+                    self.refresh_token = result.get('refresh_token')
+                    
+                    if not self.access_token:
+                        self.log_test("Registration Token Storage", False, "No access_token in response")
+                        return False
+                    else:
+                        self.log_test("Registration Token Storage", True, "Access token received and stored")
+                        
+                except Exception as e:
+                    self.log_test("Registration Token Storage", False, f"JSON parse error: {str(e)}")
+                    return False
+            
             if not success:
                 return False
         
@@ -119,7 +143,7 @@ class TBDetectionAPITester:
         return success
 
     def test_admin_login(self):
-        """Test admin login"""
+        """Test admin login and store tokens"""
         login_data = {
             "email": "admin@example.com",
             "password": "admin123"
@@ -133,14 +157,30 @@ class TBDetectionAPITester:
             data=login_data
         )
         
-        if success:
-            # Test /auth/me after login
-            success, response = self.run_test(
-                "Get Admin User Info",
-                "GET",
-                "auth/me", 
-                200
-            )
+        if success and response:
+            try:
+                result = response.json()
+                # Store tokens for subsequent requests
+                self.access_token = result.get('access_token')
+                self.refresh_token = result.get('refresh_token')
+                
+                if not self.access_token:
+                    self.log_test("Token Storage", False, "No access_token in response")
+                    return False
+                else:
+                    self.log_test("Token Storage", True, "Access token received and stored")
+                
+                # Test /auth/me after login
+                success, response = self.run_test(
+                    "Get Admin User Info",
+                    "GET",
+                    "auth/me", 
+                    200
+                )
+                
+            except Exception as e:
+                self.log_test("Token Storage", False, f"JSON parse error: {str(e)}")
+                return False
         
         return success
 
@@ -156,7 +196,11 @@ class TBDetectionAPITester:
         
         try:
             url = f"{self.base_url}/predict"
-            response = self.session.post(url, files=files)
+            headers = {}
+            if self.access_token:
+                headers['Authorization'] = f'Bearer {self.access_token}'
+                
+            response = self.session.post(url, files=files, headers=headers)
             
             success = response.status_code == 200
             details = f"Status: {response.status_code}"
@@ -243,7 +287,11 @@ class TBDetectionAPITester:
         
         try:
             url = f"{self.base_url}/report/{self.scan_id}?patient_name=Test Patient&patient_age=30&patient_gender=M"
-            response = self.session.get(url)
+            headers = {}
+            if self.access_token:
+                headers['Authorization'] = f'Bearer {self.access_token}'
+                
+            response = self.session.get(url, headers=headers)
             
             success = response.status_code == 200 and response.headers.get('content-type') == 'application/pdf'
             details = f"Status: {response.status_code}, Content-Type: {response.headers.get('content-type', 'unknown')}"

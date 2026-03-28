@@ -1,12 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, api } from '@/contexts/AuthContext';
 import Sidebar from '@/components/Sidebar';
 import { Activity, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 function AnimatedCounter({ target, duration = 1500 }) {
   const [count, setCount] = useState(0);
@@ -45,8 +42,8 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         const [statsRes, scansRes] = await Promise.all([
-          axios.get(`${API}/stats`, { withCredentials: true }),
-          axios.get(`${API}/scans`, { withCredentials: true }),
+          api.get('/stats'),
+          api.get('/scans'),
         ]);
         setStats(statsRes.data);
         setRecentScans(scansRes.data.slice(0, 5));
