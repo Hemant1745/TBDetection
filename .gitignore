@@ -81,3 +81,7 @@ memory/test_credentials.md
 # Mobile development
 android-sdk/backend/model.keras
 backend/model.keras
+-e 
+# Environment files
+*.env
+*.env.*
